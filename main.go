@@ -1,52 +1,38 @@
 package main
 
 import (
-	"net/http"
+	"fmt"
 
-	"github.com/go-playground/validator/v10"
-	"github.com/kwamekyeimonies/Gin-Gonic-Rest-API/config"
-	"github.com/kwamekyeimonies/Gin-Gonic-Rest-API/controller"
+	"github.com/gin-gonic/gin"
 	"github.com/kwamekyeimonies/Gin-Gonic-Rest-API/database"
-	"github.com/kwamekyeimonies/Gin-Gonic-Rest-API/helper"
-	"github.com/kwamekyeimonies/Gin-Gonic-Rest-API/model"
-	"github.com/kwamekyeimonies/Gin-Gonic-Rest-API/repository"
+	"github.com/kwamekyeimonies/Gin-Gonic-Rest-API/initiallizers"
+	"github.com/kwamekyeimonies/Gin-Gonic-Rest-API/models"
 	"github.com/kwamekyeimonies/Gin-Gonic-Rest-API/router"
-	"github.com/kwamekyeimonies/Gin-Gonic-Rest-API/service"
 )
 
 func main() {
 
-	// if err := godotenv.Load(); err != nil {
-	// 	log.Fatal(err)
-	// }
+	loadConfig, err := initiallizers.LoadConfig(".")
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 
-	loadConfig, err := config.LoadConfig(".")
-	helper.Error_Log(err)
+	port := loadConfig.ServerPort
+	database.Database_Connector()
+	database.DB.Table("book").AutoMigrate(&models.Book{})
+	database.DB.Table("users").AutoMigrate(&models.Users{})
 
 	// gin_server := gin.Default()
 
-	db := database.DB_Connector(&loadConfig)
-	validate := validator.New()
-	db.Table("users").AutoMigrate(&model.Users{})
-
-	usersRepository := repository.NewusersRepositoryImpl(db)
-
-	authenticationService := service.NewAuthenticationServiceImpl(usersRepository, validate)
-
-	authenticationController := controller.NewAuthenticationController(authenticationService)
-	userController := controller.NewUsersController(usersRepository)
-
-	routes := router.NewRouter(usersRepository,authenticationController,userController)
-
-	// gin_server.GET("/", func(ctx *gin.Context) {
-	// 	ctx.JSON(http.StatusOK, gin.H{"message": "Welcome to Gin-Gonic Framework"})
+	// gin_server.GET("/test", func(ctx *gin.Context){
+	// 	ctx.JSON(http.StatusOK,gin.H{
+	// 		"Message":"Welcome to Gin-Framework",
+	// 	})
 	// })
 
-	server := &http.Server{
-		Addr:    ":8888",
-		Handler: routes,
-	}
+	gin_server := gin.Default()
+	gin_server.Use(gin.Logger())
+	router.UserRouter(gin_server)
 
-	server_err := server.ListenAndServe()
-	helper.Error_Log(server_err)
+	gin_server.Run(":" + port)
 }

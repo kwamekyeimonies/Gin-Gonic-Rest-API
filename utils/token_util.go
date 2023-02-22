@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
 )
 
-func GenerateToken(ttl time.Duration, payload interface{}, secretJWTKey string) (string, error) {
-	token := jwt.New(jwt.SigningMethodHS256)
+func GenerateToken(ttl time.Duration, payload interface{}, secretJWT string) (string, error) {
 
+	token := jwt.New(jwt.SigningMethodHS256)
 	now := time.Now().UTC()
 	claims := token.Claims.(jwt.MapClaims)
 
@@ -18,30 +18,31 @@ func GenerateToken(ttl time.Duration, payload interface{}, secretJWTKey string) 
 	claims["iat"] = now.Unix()
 	claims["nbf"] = now.Unix()
 
-	tokenString, err := token.SignedString([]byte(secretJWTKey))
-
+	tokenString, err := token.SignedString([]byte(secretJWT))
 	if err != nil {
-		return "", fmt.Errorf("generating JWT Token failed: %w", err)
+		fmt.Println(err.Error())
+
 	}
 
 	return tokenString, nil
 }
 
-func ValidateToken(token string, signedJWTKey string) (interface{}, error) {
-	tok, err := jwt.Parse(token, func(jwtToken *jwt.Token) (interface{}, error) {
-		if _, ok := jwtToken.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected method: %s", jwtToken.Header["alg"])
-		}
+func ValidateToken(tokenString string, signedJWTKey string) (interface{}, error) {
 
+	token, err := jwt.Parse(tokenString, func(jwtToken *jwt.Token) (interface{}, error) {
+		if _, ok := jwtToken.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Unexpected Method %s", jwtToken.Header["alg"])
+		}
 		return []byte(signedJWTKey), nil
 	})
+
 	if err != nil {
-		return nil, fmt.Errorf("invalidate token: %w", err)
+		return nil, fmt.Errorf("Error %w:", err)
 	}
 
-	claims, ok := tok.Claims.(jwt.MapClaims)
-	if !ok || !tok.Valid {
-		return nil, fmt.Errorf("invalid token claim")
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || !token.Valid {
+		return nil, fmt.Errorf("Invalid token Claim")
 	}
 
 	return claims["sub"], nil
